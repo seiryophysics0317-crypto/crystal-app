@@ -83,6 +83,41 @@ export function getFCCParticles(state, offsetX = 0, offsetY = 0, offsetZ = 0) {
   return particles;
 }
 
+function addHCPMiddleLayerParticles(particles, state, offsetX, offsetY, offsetZ, includeNeighborFragments = false) {
+  const { side } = getHCPParams();
+  const r = getMetalRadius(state);
+  const zMiddle = offsetZ;
+
+  const centers = [];
+  const midR = side / Math.sqrt(3);
+
+  // 単位格子の内部に中心をもつB層の3個。
+  for (let i = 0; i < 3; i++) {
+    const angle = Math.PI / 6 + i * (2 * Math.PI / 3);
+    centers.push([midR * Math.cos(angle), midR * Math.sin(angle), '金属原子：中央層']);
+  }
+
+  if (includeNeighborFragments) {
+    // 切断表示では、「中心は隣の単位格子側にあるが、球の端だけがこの六角柱に入る」
+    // 中央層B層の粒子片も必要になる。以前はこの3つが未登録だったため、
+    // HCP単位格子カット・1/3カットで中央層の端の球片が表示されなかった。
+    centers.push(
+      [-side, -side / Math.sqrt(3), '金属原子：中央層の端'],
+      [side, -side / Math.sqrt(3), '金属原子：中央層の端'],
+      [0, 2 * side / Math.sqrt(3), '金属原子：中央層の端'],
+    );
+  }
+
+  for (const [x, y, label] of centers) {
+    particles.push({
+      center: new THREE.Vector3(x + offsetX, y + offsetY, zMiddle),
+      radius: r,
+      color: COLORS.metal,
+      label,
+    });
+  }
+}
+
 export function getHCPParticles(state, offsetX = 0, offsetY = 0, offsetZ = 0) {
   const { side, c } = getHCPParams();
   const r = getMetalRadius(state);
@@ -90,7 +125,6 @@ export function getHCPParticles(state, offsetX = 0, offsetY = 0, offsetZ = 0) {
 
   const zBottom = -c / 2;
   const zTop = c / 2;
-  const zMiddle = 0;
 
   for (let i = 0; i < 6; i++) {
     const angle = Math.PI / 3 * i;
@@ -126,19 +160,56 @@ export function getHCPParticles(state, offsetX = 0, offsetY = 0, offsetZ = 0) {
     label: '金属原子',
   });
 
-  const midR = side / Math.sqrt(3);
-  for (let i = 0; i < 3; i++) {
-    const angle = Math.PI / 6 + i * (2 * Math.PI / 3);
-    const x = midR * Math.cos(angle);
-    const y = midR * Math.sin(angle);
+  addHCPMiddleLayerParticles(particles, state, offsetX, offsetY, offsetZ, false);
+
+  return particles;
+}
+
+export function getHCPCutParticles(state, offsetX = 0, offsetY = 0, offsetZ = 0) {
+  const { side, c } = getHCPParams();
+  const r = getMetalRadius(state);
+  const particles = [];
+
+  const zBottom = -c / 2;
+  const zTop = c / 2;
+
+  // 上下面は従来どおり、六角柱の角と中心にある粒子を使う。
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.PI / 3 * i;
+    const x = side * Math.cos(angle);
+    const y = side * Math.sin(angle);
 
     particles.push({
-      center: new THREE.Vector3(x + offsetX, y + offsetY, zMiddle + offsetZ),
+      center: new THREE.Vector3(x + offsetX, y + offsetY, zBottom + offsetZ),
+      radius: r,
+      color: COLORS.metal,
+      label: '金属原子',
+    });
+
+    particles.push({
+      center: new THREE.Vector3(x + offsetX, y + offsetY, zTop + offsetZ),
       radius: r,
       color: COLORS.metal,
       label: '金属原子',
     });
   }
+
+  particles.push({
+    center: new THREE.Vector3(offsetX, offsetY, zBottom + offsetZ),
+    radius: r,
+    color: COLORS.metal,
+    label: '金属原子',
+  });
+
+  particles.push({
+    center: new THREE.Vector3(offsetX, offsetY, zTop + offsetZ),
+    radius: r,
+    color: COLORS.metal,
+    label: '金属原子',
+  });
+
+  // 切断表示だけ、中央層の外側3粒子を追加し、クリッピングで端の部分だけ残す。
+  addHCPMiddleLayerParticles(particles, state, offsetX, offsetY, offsetZ, true);
 
   return particles;
 }

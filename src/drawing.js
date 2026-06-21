@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { addObject } from './scene.js';
 import { A, COLORS, H, getHCPParams, getMetalRadius, isHCP, isMetal } from './config.js';
-import { getCurrentParticles } from './particles.js';
+import { getCurrentParticles, getHCPCutParticles } from './particles.js';
 
 export function sphereMaterial(state, color, clippingPlanes = []) {
   return new THREE.MeshStandardMaterial({
@@ -543,8 +543,10 @@ export function addMetalCutUnitAsParts(ctx) {
 
   const hcpPlanes = getHCPClippingPlanes();
   addHCPPrismFacePlanes(ctx);
-  addFullUnit(ctx, 0, 0, 0, hcpPlanes);
-  addCapsForParticles(ctx, getCurrentParticles(ctx.state), hcpPlanes);
+  for (const p of getHCPCutParticles(ctx.state)) {
+    addSphere(ctx, p.center.x, p.center.y, p.center.z, p.radius, p.color, hcpPlanes);
+  }
+  addCapsForParticles(ctx, getHCPCutParticles(ctx.state), hcpPlanes);
 }
 
 export function addCutUnitByClipping(ctx) {
@@ -552,8 +554,16 @@ export function addCutUnitByClipping(ctx) {
 
   if (isHCP(ctx.state)) addHCPPrismFacePlanes(ctx);
 
-  addFullUnit(ctx, 0, 0, 0, planes);
-  addCapsForParticles(ctx, getCurrentParticles(ctx.state), planes);
+  if (isHCP(ctx.state)) {
+    const particles = getHCPCutParticles(ctx.state);
+    for (const p of particles) {
+      addSphere(ctx, p.center.x, p.center.y, p.center.z, p.radius, p.color, planes);
+    }
+    addCapsForParticles(ctx, particles, planes);
+  } else {
+    addFullUnit(ctx, 0, 0, 0, planes);
+    addCapsForParticles(ctx, getCurrentParticles(ctx.state), planes);
+  }
 }
 
 export function getSlicePlane(state) {

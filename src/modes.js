@@ -1,6 +1,6 @@
 import { clearSceneObjects } from './scene.js';
 import { A, getCrystalName, getCountText, getFillingRate, getHCPParams, getIonicAnalysisHTML, getLegendText, getRelationText, isHCP, isMetal } from './config.js';
-import { getCurrentParticles, getHCPBlockParticles } from './particles.js';
+import { getCurrentParticles, getHCPBlockParticles, getHCPCutParticles } from './particles.js';
 import {
   addCapsForParticles,
   addCutUnitByClipping,
@@ -114,8 +114,10 @@ export function showHCPThirdCut(ctx) {
   const planes = getHCPThirdClippingPlanes();
   addHCPThirdPrismFacePlanes(ctx);
   addHCPThirdFrame(ctx);
-  addFullUnit(ctx, 0, 0, 0, planes);
-  addCapsForParticles(ctx, getCurrentParticles(ctx.state), planes);
+  for (const p of getHCPCutParticles(ctx.state)) {
+    addSphere(ctx, p.center.x, p.center.y, p.center.z, p.radius, p.color, planes);
+  }
+  addCapsForParticles(ctx, getHCPCutParticles(ctx.state), planes);
 
   ctx.ui.info.innerHTML = `
     <b>${getCrystalName(ctx.state)}：六角柱の3分の1カット</b><br>
@@ -144,8 +146,16 @@ export function showSliceMode(ctx) {
 
   const allPlanes = [...basePlanes, slicePlane];
 
-  addFullUnit(ctx, 0, 0, 0, allPlanes);
-  addCapsForParticles(ctx, getCurrentParticles(ctx.state), allPlanes);
+  if (isHCP(ctx.state)) {
+    const particles = getHCPCutParticles(ctx.state);
+    for (const p of particles) {
+      addSphere(ctx, p.center.x, p.center.y, p.center.z, p.radius, p.color, allPlanes);
+    }
+    addCapsForParticles(ctx, particles, allPlanes);
+  } else {
+    addFullUnit(ctx, 0, 0, 0, allPlanes);
+    addCapsForParticles(ctx, getCurrentParticles(ctx.state), allPlanes);
+  }
   addSlicePlaneVisual(ctx, slicePlane, isHCP(ctx.state) ? 3.8 : 3.4);
 
   const fillingText = isMetal(ctx.state)
